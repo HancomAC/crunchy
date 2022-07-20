@@ -1,0 +1,21 @@
+{
+  "name": "@hancomeducation/crunchy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "node esbuild.js",
+    "deploy": "npm run build && npm publish --access public"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "args-parser": "^1.3.0",
+    "esbuild": "^0.14.49"
+  },
+  "bin": "build/index.js",
+  "devDependencies": {
+    "@types/node": "^18.0.6"
+  }
+}
