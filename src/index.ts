@@ -16,7 +16,7 @@ function getDigest(stdout) {
 function run(proc: string, options: string[]) {
     return new Promise<void>((resolve) => {
         // @ts-ignore
-        const _ = spawn(proc, options, {cwd: process.cwd()});
+        const _ = spawn(proc, options, {cwd: process.cwd(), stdio: 'inherit'});
         _.on('close', () => {
             resolve();
         })
@@ -24,8 +24,11 @@ function run(proc: string, options: string[]) {
 }
 
 async function main() {
-    console.log(`Building... (${getElapsedTime()}s)`)
-    await run('npm', ['run', 'build:docker']);
+    console.log(`Building TS... (${getElapsedTime()}s)`)
+    await run('pnpm', ['run', 'build']);
+
+    console.log(`Building Docker... (${getElapsedTime()}s)`)
+    await run('docker', ['build', '--platform', 'linux/amd64', '-t', 'asia.gcr.io/hancomac/' + image + (beta ? ':dev' : ''), '.']);
 
     console.log(`Uploading image... (${getElapsedTime()}s)`)
     const result_main = getDigest((await exec_p('docker push asia.gcr.io/hancomac/' + image + (beta ? ':dev' : ''))).stdout);
