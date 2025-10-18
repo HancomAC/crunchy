@@ -1,0 +1,75 @@
+name: Release Crunchy
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: crunchy/go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          cd crunchy
+          binary="crunchy-${GOOS}-${GOARCH}"
+          go build -o "$binary" .
+          mkdir -p ../dist
+          mv "$binary" ../dist/
+
+      - name: Generate checksum
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          cd dist
+          binary="crunchy-${GOOS}-${GOARCH}"
+          sha="${binary}.sha256"
+          sha256sum "$binary" > "$sha"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: crunchy-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/crunchy-${{ matrix.goos }}-${{ matrix.goarch }}
+            dist/crunchy-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
