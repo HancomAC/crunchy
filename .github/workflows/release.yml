@@ -2,6 +2,8 @@ name: Release Crunchy
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:

@@ -68,6 +68,3 @@ crunchy \
 - `pnpm` installed and a working `pnpm run build`.
 - Docker CLI with access to the inferred (or specified) registry host.
 - Google Cloud SDK (`gcloud`) authenticated for the provided project and region.
-
-## Release Automation
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds Crunchy binaries for supported platforms whenever a `v*` tag is pushed or the workflow is triggered manually. The resulting artifacts are attached to the GitHub Release automatically.
