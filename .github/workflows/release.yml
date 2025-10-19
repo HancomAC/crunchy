@@ -9,31 +9,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  retag:
-    name: Update latest tag
-    needs: release
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Configure git user
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Move latest tag
-        env:
-          COMMIT_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          if git rev-parse latest >/dev/null 2>&1; then
-            git tag -d latest
-          fi
-          git push origin :refs/tags/latest || true
-          git tag latest "$COMMIT_SHA"
-          git push origin latest --force
 
   build:
     name: Build binaries
@@ -87,8 +62,37 @@ jobs:
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine release tag
+        id: release_tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update latest tag
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags
+          git tag -d latest 2>/dev/null || true
+          git push origin :refs/tags/latest || true
+          git tag latest "$COMMIT_SHA"
+          git push origin latest --force
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -97,6 +101,10 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.release_tag.outputs.tag == 'latest' && 'Latest' || steps.release_tag.outputs.tag }}
+          make_latest: true
           files: release/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
