@@ -34,11 +34,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           set -euo pipefail
-          cd crunchy
           binary="crunchy-${GOOS}-${GOARCH}"
-          go build -o "$binary" .
-          mkdir -p ../dist
-          mv "$binary" ../dist/
+          mkdir -p dist
+          go build -o "dist/$binary" .
 
       - name: Generate checksum
         env:
