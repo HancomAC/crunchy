@@ -24,6 +24,7 @@ type config struct {
 	project  string
 	region   string
 	registryHost string
+	lang     language
 }
 
 func main() {
@@ -50,6 +51,7 @@ func parseConfig() (*config, error) {
 	project := flag.String("project", "", "GCP project to deploy to (required)")
 	region := flag.String("region", "", "Cloud Run region (required)")
 	registryHost := flag.String("registry-host", "", "Container registry host (e.g. gcr.io, asia.gcr.io). If omitted, inferred from --region")
+	lang := flag.String("lang", "", "Project language/build tool to use (e.g. node, go). Defaults to auto-detection")
 	flag.Parse()
 
 	if *image == "" {
@@ -91,6 +93,11 @@ func parseConfig() (*config, error) {
 		host = inferRegistryHost(*region)
 	}
 
+	projectLang, err := determineLanguage(workdir, *lang)
+	if err != nil {
+		return nil, err
+	}
+
 	return &config{
 		image:    *image,
 		beta:     *beta,
@@ -102,6 +109,7 @@ func parseConfig() (*config, error) {
 		project:  *project,
 		region:   *region,
 		registryHost: host,
+		lang:     projectLang,
 	}, nil
 }
 
@@ -132,9 +140,9 @@ func inferRegistryHost(region string) string {
 }
 
 func run(cfg *config) error {
-	logStep(cfg, "Building TS...")
-	if err := runCommandStreaming(cfg.workdir, "pnpm", "run", "build"); err != nil {
-		return fmt.Errorf("build project: %w", err)
+	logStep(cfg, fmt.Sprintf("Building (%s)...", cfg.lang))
+	if err := buildProject(cfg); err != nil {
+		return err
 	}
 
 	imageRepo := fmt.Sprintf("%s/%s/%s", cfg.registryHost, cfg.project, cfg.image)

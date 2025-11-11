@@ -3,7 +3,7 @@
 Crunchy is a deployment helper that builds the current project, publishes a Docker image, and updates one or more Cloud Run services.
 
 ## Features
-- Runs the local TypeScript build (`pnpm run build`) before packaging.
+- Runs the project build using the requested language/tooling (pnpm, npm, yarn, Go, or Rust) with auto-detection when not specified.
 - Builds and pushes a `gcr.io/<project>/<image>` (or custom registry host) Docker image.
 - Deploys the new image to multiple Cloud Run services in parallel and shifts traffic to the latest revision.
 - Cleans up stale Cloud Run revisions and image digests with configurable retention limits.
@@ -37,7 +37,8 @@ crunchy --image <name> \
         --region <gcp-region> \
         [--beta] \
         [--keep-images <count>] \
-        [--keep-revisions <count>]
+        [--keep-revisions <count>] \
+        [--lang <pnpm|npm|yarn|go|rust>]
 ```
 
 ### Required flags
@@ -51,6 +52,18 @@ crunchy --image <name> \
 - `--keep-images`: Number of image digests to retain (default: `10`).
 - `--keep-revisions`: Number of Cloud Run revisions to retain (default: `10`).
 - `--registry-host`: Container registry host to target. Defaults to a region-specific host (e.g. `asia-northeast3` → `asia.gcr.io`, `europe-west1` → `eu.gcr.io`, `us-central1` → `us.gcr.io`, otherwise `gcr.io`).
+- `--lang`: Manually select the project language/build tool. Accepted values: `pnpm`, `npm`, `yarn`, `go`, `rust`. Historical aliases like `node` still map to the pnpm build.
+
+### Build tool detection
+When `--lang` is not provided, Crunchy checks for well-known files in the working directory:
+- `pnpm-lock.yaml`: run `pnpm run build`.
+- `yarn.lock`: run `yarn build`.
+- `package-lock.json`: run `npm run build`.
+- `go.mod`: run `go build ./...`.
+- `Cargo.toml`: run `cargo build --release`.
+- `package.json` with none of the above locks: default to `pnpm run build` for backward compatibility.
+
+If none of the indicators are present, Crunchy defaults to the Node (pnpm) build to preserve historical behavior.
 
 ### Example
 
@@ -65,6 +78,6 @@ crunchy \
 ```
 
 ## Requirements
-- `pnpm` installed and a working `pnpm run build`.
+- Matching tooling for your project (e.g. `pnpm`, `npm`, or `yarn` for Node/TypeScript builds; `go` for Go builds; `cargo` for Rust builds).
 - Docker CLI with access to the inferred (or specified) registry host.
 - Google Cloud SDK (`gcloud`) authenticated for the provided project and region.
